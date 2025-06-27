@@ -1,0 +1,257 @@
+/* Estilos específicos para la pestaña de Telegram */
+/* AGREGAR AL FINAL DE styles/modern_admin.css */
+
+/* === TELEGRAM ADMIN STYLES === */
+
+.stats-card-telegram {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+}
+
+.stats-card-telegram:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: var(--accent-green);
+    transform: translateY(-2px);
+}
+
+.stats-icon {
+    background: var(--glow-green);
+    color: var(--accent-green);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.stats-content {
+    flex: 1;
+}
+
+.stats-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.stats-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-active {
+    background: rgba(40, 167, 69, 0.2);
+    color: var(--accent-green);
+    border: 1px solid var(--accent-green);
+}
+
+.status-inactive {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid #ffc107;
+}
+
+/* Telegram test results */
+.telegram-test-results {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glow-border);
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 200px;
+    font-family: 'Courier New', monospace;
+    color: var(--text-primary);
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.test-result-placeholder {
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.test-result-success {
+    color: var(--accent-green);
+    margin-bottom: 0.5rem;
+}
+
+.test-result-error {
+    color: #dc3545;
+    margin-bottom: 0.5rem;
+}
+
+.test-result-info {
+    color: #17a2b8;
+    margin-bottom: 0.5rem;
+}
+
+/* Logs específicos de Telegram */
+.telegram-log-entry {
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid var(--accent-green);
+    transition: background 0.3s ease;
+}
+
+.telegram-log-entry:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.telegram-log-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.telegram-log-timestamp {
+    font-weight: bold;
+    color: var(--accent-green);
+}
+
+.telegram-log-content {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Input groups para token */
+.input-group .form-control-admin {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group .btn-admin {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stats-card-telegram {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .stats-icon {
+        margin: 0 auto;
+    }
+    
+    .telegram-test-results {
+        min-height: 150px;
+        font-size: 0.85rem;
+    }
+}
+
+/* Animation for loading states */
+@keyframes pulse-telegram {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.loading-telegram {
+    animation: pulse-telegram 1.5s ease-in-out infinite;
+}
+
+/* Webhook status indicator */
+.webhook-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.webhook-active {
+    background: rgba(40, 167, 69, 0.2);
+    color: var(--accent-green);
+    border: 1px solid var(--accent-green);
+}
+
+.webhook-inactive {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+/* Special styling for telegram bot info display */
+.bot-info-display {
+    background: rgba(0, 136, 204, 0.1);
+    border: 1px solid rgba(0, 136, 204, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    font-family: monospace;
+    color: #0088cc;
+}
+
+.command-input-group {
+    margin-top: 1rem;
+}
+
+.command-input-group .input-group-text {
+    background: var(--glow-green);
+    color: var(--accent-green);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-right: none;
+}
+
+/* Success/Error message styling */
+.telegram-message {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.telegram-message-success {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid var(--accent-green);
+    color: var(--accent-green);
+}
+
+.telegram-message-error {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+.telegram-message-warning {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid #ffc107;
+    color: #ffc107;
+}

@@ -278,6 +278,8 @@ function createDatabaseStructure($pdo) {
             username VARCHAR(50) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             telegram_id BIGINT UNSIGNED NULL,
+            telegram_username VARCHAR(255) NULL,         
+            last_telegram_activity TIMESTAMP NULL, 
             status TINYINT(1) DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci",
@@ -307,6 +309,8 @@ function createDatabaseStructure($pdo) {
             user_id INT,
             email_consultado VARCHAR(100) NOT NULL,
             plataforma VARCHAR(50) NOT NULL,
+            source_channel ENUM('web','telegram') DEFAULT 'web',  
+            telegram_chat_id BIGINT NULL,  
             ip VARCHAR(45),
             fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             resultado TEXT,
@@ -314,6 +318,17 @@ function createDatabaseStructure($pdo) {
             INDEX idx_user_id (user_id),
             INDEX idx_fecha (fecha),
             INDEX idx_email (email_consultado)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci",
+
+        "CREATE TABLE IF NOT EXISTS telegram_sessions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            telegram_id BIGINT,
+            user_id INT,
+            session_token VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP,
+            is_active BOOLEAN DEFAULT TRUE,
+            FOREIGN KEY (user_id) REFERENCES users(id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci",
         
         "CREATE TABLE IF NOT EXISTS settings (

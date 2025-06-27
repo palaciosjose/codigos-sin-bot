@@ -79,6 +79,8 @@ foreach ($required_tables as $table) {
     }
 }
 
+
+
 $check_servers = $conn->query("SELECT COUNT(*) as count FROM email_servers");
 $server_count = 0;
 if ($check_servers && $row = $check_servers->fetch_assoc()) {
@@ -288,6 +290,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
             exit();
         }
     }
+
+function getTelegramConfig($conn) {
+    $config = [];
+    
+    $telegram_settings = [
+        'TELEGRAM_BOT_TOKEN',
+        'TELEGRAM_WEBHOOK_SECRET', 
+        'TELEGRAM_RATE_LIMIT',
+        'TELEGRAM_MAX_MESSAGE_LENGTH',
+        'TELEGRAM_ENABLED'
+    ];
+    
+    $placeholders = str_repeat('?,', count($telegram_settings) - 1) . '?';
+    $stmt = $conn->prepare("SELECT name, value FROM settings WHERE name IN ($placeholders)");
+    if ($stmt) {
+        $stmt->bind_param(str_repeat('s', count($telegram_settings)), ...$telegram_settings);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        while ($row = $result->fetch_assoc()) {
+            $key = strtolower(str_replace('TELEGRAM_', '', $row['name']));
+            $config[$key] = $row['value'];
+        }
+        $stmt->close();
+    }
+    
+    // Valores por defecto
+    $defaults = [
+        'bot_token' => '',
+        'webhook_secret' => '',
+        'rate_limit' => '30',
+        'max_message_length' => '4096',
+        'enabled' => '0'
+    ];
+    
+    return array_merge($defaults, $config);
+}
+
+// Cargar configuración de Telegram
+$telegram_config = getTelegramConfig($conn);
 
     // PROCESAMIENTO DE CONFIGURACIÓN GENERAL
     if (!$update_servers_only) {
@@ -576,6 +618,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
             </button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="telegram-tab" data-bs-toggle="tab" data-bs-target="#telegram" type="button" role="tab">
+            <i class="fab fa-telegram me-2"></i>Bot de Telegram
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
                 <i class="fas fa-list-alt me-2"></i>Registros
             </button>
@@ -601,13 +648,310 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
     </ul>
 
     <div class="tab-content" id="adminTabContent">
-        <div class="tab-pane fade show active" id="config" role="tabpanel">
+        <div class="tab-pane fade" id="telegram" role="tabpanel">
+    
+    <!-- Estado General del Bot -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3 class="admin-card-title">
+                <i class="fab fa-telegram me-2"></i>
+                Estado del Bot de Telegram
+            </h3>
+            <div class="action-buttons-group">
+                <button class="btn-admin btn-success-admin" onclick="testBotConnection()">
+                    <i class="fas fa-plug me-2"></i>Probar Conexión
+                </button>
+                <button class="btn-admin btn-primary-admin" onclick="refreshBotStatus()">
+                    <i class="fas fa-sync me-2"></i>Actualizar
+                </button>
+            </div>
+        </div>
+        
+        <!-- Estadísticas del Bot -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card-telegram">
+                    <div class="stats-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="stats-content">
+                        <div class="stats-number" id="bot-status">
+                            <span class="status-badge status-pending">
+                                <i class="fas fa-question-circle"></i>
+                                Verificando...
+                            </span>
+                        </div>
+                        <div class="stats-label">Estado del Bot</div>
+                    </div>
+                </div>
+            </div>
             
-            <!-- 
-AGREGAR ESTA SECCIÓN AL INICIO DE LA PESTAÑA DE CONFIGURACIÓN EN admin.php 
-Colocar justo después de: <div class="tab-pane fade show active" id="config" role="tabpanel">
--->
+            <div class="col-md-3">
+                <div class="stats-card-telegram">
+                    <div class="stats-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stats-content">
+                        <div class="stats-number" id="queries-today">0</div>
+                        <div class="stats-label">Consultas Hoy</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stats-card-telegram">
+                    <div class="stats-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stats-content">
+                        <div class="stats-number" id="telegram-users">0</div>
+                        <div class="stats-label">Usuarios Telegram</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stats-card-telegram">
+                    <div class="stats-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stats-content">
+                        <div class="stats-number" id="last-activity">--</div>
+                        <div class="stats-label">Última Actividad</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Configuración del Bot -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3 class="admin-card-title">
+                <i class="fas fa-cogs me-2"></i>
+                Configuración del Bot
+            </h3>
+        </div>
+        
+        <form id="telegramConfigForm" method="POST" action="admin/telegram_config.php">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group-admin">
+                        <label for="telegram_bot_token" class="form-label-admin">
+                            <i class="fab fa-telegram me-2"></i>Token del Bot *
+                        </label>
+                        <div class="input-group">
+                            <input type="password" 
+                                   class="form-control-admin" 
+                                   id="telegram_bot_token" 
+                                   name="telegram_bot_token" 
+                                   placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                                   value="<?= htmlspecialchars($telegram_config['bot_token'] ?? '') ?>">
+                            <button class="btn-admin btn-secondary-admin" type="button" onclick="toggleTokenVisibility()">
+                                <i class="fas fa-eye" id="toggle-icon"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Obtenido desde @BotFather en Telegram</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group-admin">
+                        <label for="telegram_webhook_secret" class="form-label-admin">
+                            <i class="fas fa-shield-alt me-2"></i>Secret del Webhook
+                        </label>
+                        <input type="password" 
+                               class="form-control-admin" 
+                               id="telegram_webhook_secret" 
+                               name="telegram_webhook_secret" 
+                               placeholder="tu_secreto_seguro_random"
+                               value="<?= htmlspecialchars($telegram_config['webhook_secret'] ?? '') ?>">
+                        <small class="text-muted">Clave secreta para validar requests de Telegram</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group-admin">
+                <label for="telegram_webhook_url" class="form-label-admin">
+                    <i class="fas fa-link me-2"></i>URL del Webhook
+                </label>
+                <input type="url" 
+                       class="form-control-admin" 
+                       id="telegram_webhook_url" 
+                       name="telegram_webhook_url" 
+                       value="<?= "https://" . $_SERVER['HTTP_HOST'] . "/telegram_bot/webhook.php" ?>" 
+                       readonly>
+                <small class="text-muted">URL generada automáticamente basada en tu dominio</small>
+            </div>
+            
+            <!-- Configuraciones Avanzadas -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group-admin">
+                        <label for="telegram_rate_limit" class="form-label-admin">
+                            <i class="fas fa-tachometer-alt me-2"></i>Límite Requests/min
+                        </label>
+                        <input type="number" 
+                               class="form-control-admin" 
+                               id="telegram_rate_limit" 
+                               name="telegram_rate_limit" 
+                               value="<?= htmlspecialchars($telegram_config['rate_limit'] ?? '30') ?>" 
+                               min="1" max="100">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="form-group-admin">
+                        <label for="telegram_max_message_length" class="form-label-admin">
+                            <i class="fas fa-text-width me-2"></i>Max Longitud Mensaje
+                        </label>
+                        <input type="number" 
+                               class="form-control-admin" 
+                               id="telegram_max_message_length" 
+                               name="telegram_max_message_length" 
+                               value="<?= htmlspecialchars($telegram_config['max_message_length'] ?? '4096') ?>" 
+                               min="100" max="4096">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="form-group-admin">
+                        <label for="telegram_enabled" class="form-label-admin">
+                            <i class="fas fa-power-off me-2"></i>Estado del Bot
+                        </label>
+                        <select class="form-control-admin" id="telegram_enabled" name="telegram_enabled">
+                            <option value="1" <?= ($telegram_config['enabled'] ?? '0') === '1' ? 'selected' : '' ?>>Activado</option>
+                            <option value="0" <?= ($telegram_config['enabled'] ?? '0') === '0' ? 'selected' : '' ?>>Desactivado</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-3 mt-4">
+                <button type="submit" class="btn-admin btn-success-admin">
+                    <i class="fas fa-save me-2"></i>Guardar Configuración
+                </button>
+                <button type="button" class="btn-admin btn-warning-admin" onclick="setupWebhook()">
+                    <i class="fas fa-link me-2"></i>Configurar Webhook
+                </button>
+                <button type="button" class="btn-admin btn-info-admin" onclick="getBotInfo()">
+                    <i class="fas fa-info-circle me-2"></i>Info del Bot
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Usuarios de Telegram -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3 class="admin-card-title">
+                <i class="fas fa-users me-2"></i>
+                Usuarios de Telegram
+            </h3>
+            <div class="action-buttons-group">
+                <button class="btn-admin btn-success-admin" onclick="syncTelegramUsers()">
+                    <i class="fas fa-sync me-2"></i>Sincronizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table-admin" id="telegramUsersTable">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-user me-2"></i>Usuario Web</th>
+                        <th><i class="fab fa-telegram me-2"></i>Telegram ID</th>
+                        <th><i class="fas fa-at me-2"></i>Username</th>
+                        <th><i class="fas fa-clock me-2"></i>Última Actividad</th>
+                        <th><i class="fas fa-toggle-on me-2"></i>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="telegramUsersTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Cargando usuarios de Telegram...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Logs del Bot -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3 class="admin-card-title">
+                <i class="fas fa-list me-2"></i>
+                Logs del Bot (Últimos 10)
+            </h3>
+            <div class="action-buttons-group">
+                <button class="btn-admin btn-warning-admin" onclick="clearTelegramLogs()">
+                    <i class="fas fa-trash me-2"></i>Limpiar Logs
+                </button>
+            </div>
+        </div>
+        
+        <div id="telegramLogsContainer">
+            <div class="text-center py-4">
+                <i class="fas fa-spinner fa-spin fa-2x text-muted mb-2"></i>
+                <p class="text-muted mb-0">Cargando logs del bot...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Pruebas -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3 class="admin-card-title">
+                <i class="fas fa-vial me-2"></i>
+                Panel de Pruebas
+            </h3>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fas fa-flask me-2"></i>Pruebas Rápidas</h6>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn-admin btn-primary-admin" onclick="testBotInfo()">
+                        <i class="fas fa-info-circle me-2"></i>Obtener Info del Bot
+                    </button>
+                    
+                    <button class="btn-admin btn-primary-admin" onclick="testWebhookInfo()">
+                        <i class="fas fa-link me-2"></i>Verificar Webhook
+                    </button>
+                    
+                    <button class="btn-admin btn-primary-admin" onclick="testSendMessage()">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar Mensaje de Prueba
+                    </button>
+                </div>
+                
+                <div class="mt-3">
+                    <h6><i class="fas fa-terminal me-2"></i>Consola de Comandos</h6>
+                    <div class="input-group">
+                        <span class="input-group-text">/</span>
+                        <input type="text" class="form-control-admin" id="test_command" placeholder="buscar admin@gmail.com Netflix">
+                        <button class="btn-admin btn-primary-admin" onclick="sendTestCommand()">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h6><i class="fas fa-desktop me-2"></i>Resultados de Pruebas</h6>
+                <div class="telegram-test-results" id="telegramTestResults">
+                    <div class="test-result-placeholder">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Selecciona una prueba para ver los resultados...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            
 <!-- Dashboard de Estadísticas en Tiempo Real -->
 <div class="admin-card dashboard-stats-card">
     <div class="admin-card-header">
